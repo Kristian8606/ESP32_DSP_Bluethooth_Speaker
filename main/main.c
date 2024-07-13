@@ -28,13 +28,8 @@
 
 uint8_t fs = 0;
 
-
-float n0, n1, n2, d1, d2;
-    float b0, b1, b2, a0, a1, a2;
-        float w0, cosW, sinW, A, alpha, beta;
-        
 /* device name */
-#define LOCAL_DEVICE_NAME    "ESP_SPEAKER"
+#define LOCAL_DEVICE_NAME    "ESP32_SPEAKER"
 
 /* event for stack up */
 enum {

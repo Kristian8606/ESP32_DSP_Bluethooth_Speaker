@@ -281,8 +281,7 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
             bt_i2s_driver_uninstall();
             bt_i2s_task_shut_down();
             esp_restart();
-			//esp_bt_controller_disable();
-			//esp_bt_controller_deinit();
+			
         } else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED){
             esp_bt_gap_set_scan_mode(ESP_BT_NON_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
             bt_i2s_task_start_up();
