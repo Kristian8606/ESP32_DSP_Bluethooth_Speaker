@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
-
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
@@ -35,7 +35,7 @@ enum {
 };
 
 
-
+ 	
 
 /*******************************
  * STATIC FUNCTION DECLARATIONS
@@ -66,8 +66,12 @@ static uint16_t ringbuffer_mode = RINGBUFFER_MODE_PROCESSING;
  ********************************/
 #ifndef CONFIG_EXAMPLE_A2DP_SINK_OUTPUT_INTERNAL_DAC
 extern i2s_chan_handle_t tx_chan;
+extern i2s_chan_handle_t Ltx_chan;
+
 #else
 extern dac_continuous_handle_t tx_chan;
+extern dac_continuous_handle_t Ltx_chan;
+
 #endif
 
 /*******************************
@@ -124,6 +128,7 @@ static void bt_i2s_task_handler(void *arg)
 {
     uint8_t *data = NULL;
     size_t item_size = 0;
+   
     /**
      * The total length of DMA buffer of I2S is:
      * `dma_frame_num * dma_desc_num * i2s_channel_num * i2s_data_bit_width / 8`.
@@ -137,7 +142,8 @@ static void bt_i2s_task_handler(void *arg)
             for (;;) {
                 item_size = 0;
               //   receive data from ringbuffer and write it to I2S DMA transmit buffer 
-                data = (uint8_t *)xRingbufferReceiveUpTo(s_ringbuf_i2s, &item_size, (TickType_t)pdMS_TO_TICKS(20), item_size_upto);
+                data = (uint8_t *)xRingbufferReceiveUpTo(s_ringbuf_i2s, &item_size, (TickType_t)pdMS_TO_TICKS(200), item_size_upto);
+               
                 if (item_size == 0) {
                     ESP_LOGI(BT_APP_CORE_TAG, "ringbuffer underflowed! mode changed: RINGBUFFER_MODE_PREFETCHING");
                     ringbuffer_mode = RINGBUFFER_MODE_PREFETCHING;
@@ -151,13 +157,34 @@ static void bt_i2s_task_handler(void *arg)
 				//   *pcmdata = ((*pcmdata)*s_volume)/127;
 				*pcmdata = (int16_t)temp;
 				pcmdata++;
-            
 			}
+			
+		//	 int16_t buffer[item_size];
+    	//	 uint8_t *data1 = (uint8_t *)buffer;
+			 //	memcpy(p_buf, data, item_size);
+		
+		//	for (int i = 0; i < item_size; i++) {
+		//		*(data1 + i) = (uint8_t)*(data + i);
+		//	}
+			
+	     	
+		//	process_data_L(data1, item_size);
+			
 			process_data(data, item_size);
+			//process_data_R(data1, item_size);
+		 // process_data_L_test(data1, item_size);
+		//  process_data_R_L(data1, data, item_size);
+		  
+
+			
             #ifdef CONFIG_EXAMPLE_A2DP_SINK_OUTPUT_INTERNAL_DAC
                 dac_continuous_write(tx_chan, data, item_size, &bytes_written, -1);
             #else
+              
                 i2s_channel_write(tx_chan, data, item_size, &bytes_written, portMAX_DELAY);
+           //    i2s_channel_write(Ltx_chan, data1, item_size, &bytes_written, portMAX_DELAY);
+               // printf("Data %p\n", data);
+              // printf("%" PRIu8 "\n",(int8_t) &data);
             #endif
                 vRingbufferReturnItem(s_ringbuf_i2s, (void *)data);
             }
@@ -199,8 +226,8 @@ bool bt_app_work_dispatch(bt_app_cb_t p_cback, uint16_t event, void *p_params, i
 
 void bt_app_task_start_up(void)
 {
-    s_bt_app_task_queue = xQueueCreate(150, sizeof(bt_app_msg_t));
-    xTaskCreate(bt_app_task_handler, "BtAppTask", 4096, NULL, 10, &s_bt_app_task_handle);
+    s_bt_app_task_queue = xQueueCreate(40, sizeof(bt_app_msg_t));
+    xTaskCreate(bt_app_task_handler, "BtAppTask", 3072, NULL, 10, &s_bt_app_task_handle);
 }
 
 void bt_app_task_shut_down(void)

@@ -25,6 +25,7 @@
 #include "driver/dac_continuous.h"
 #else
 #include "driver/i2s_std.h"
+#include "driver/gpio.h"
 #endif
 
 #include "sys/lock.h"
@@ -89,9 +90,13 @@ static TaskHandle_t s_vcs_task_hdl = NULL;    /* handle for volume change simula
  uint8_t s_volume = 0;                 /* local volume value */
 static bool s_volume_notify;                 /* notify volume change or not */
 #ifndef CONFIG_EXAMPLE_A2DP_SINK_OUTPUT_INTERNAL_DAC
-i2s_chan_handle_t tx_chan = NULL;
+i2s_chan_handle_t tx_chan;
+i2s_chan_handle_t Ltx_chan;
+
 #else
 dac_continuous_handle_t tx_chan;
+dac_continuous_handle_t Ltx_chan;
+
 #endif
  uint8_t volume_temp = 0;
 /********************************
@@ -186,7 +191,7 @@ void bt_i2s_driver_install(void)
     /* Enable the continuous channels */
     ESP_ERROR_CHECK(dac_continuous_enable(tx_chan));
 #else
-    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);
     chan_cfg.auto_clear = true;
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100),
@@ -204,6 +209,29 @@ void bt_i2s_driver_install(void)
             },
         },
     };
+     i2s_chan_config_t Lchan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    Lchan_cfg.auto_clear = true;
+    i2s_std_config_t Lstd_cfg = {
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100),
+        .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+        .gpio_cfg = {
+            .mclk = I2S_GPIO_UNUSED,
+            .bclk = GPIO_NUM_27,
+            .ws = GPIO_NUM_4,
+            .dout = GPIO_NUM_16,
+            .din = I2S_GPIO_UNUSED,
+            .invert_flags = {
+                .mclk_inv = false,
+                .bclk_inv = false,
+                .ws_inv = false,
+            },
+        },
+    };
+                    
+    ESP_ERROR_CHECK(i2s_new_channel(&Lchan_cfg, &Ltx_chan, NULL));
+    ESP_ERROR_CHECK(i2s_channel_init_std_mode(Ltx_chan, &Lstd_cfg));
+    ESP_ERROR_CHECK(i2s_channel_enable(Ltx_chan));
+    
     /* enable I2S */
     ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &tx_chan, NULL));
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_chan, &std_cfg));
@@ -219,13 +247,15 @@ void bt_i2s_driver_uninstall(void)
 #else
     ESP_ERROR_CHECK(i2s_channel_disable(tx_chan));
     ESP_ERROR_CHECK(i2s_del_channel(tx_chan));
+    ESP_ERROR_CHECK(i2s_channel_disable(Ltx_chan));
+    ESP_ERROR_CHECK(i2s_del_channel(Ltx_chan));
 #endif
 }
 
 static void volume_set_by_controller(uint8_t volume)
 {
  	
-    ESP_LOGI(BT_RC_TG_TAG, "Volume is set by remote controller to: %"PRIu32"%%", (uint32_t)volume * 100 / 0x7f);
+  //  ESP_LOGI(BT_RC_TG_TAG, "Volume is set by remote controller to: %"PRIu32"%%", (uint32_t)volume * 100 / 0x7f);
     /* set the volume in protection of lock */
     _lock_acquire(&s_volume_lock);
     s_volume = volume;  
@@ -498,7 +528,7 @@ static void bt_av_hdl_avrc_tg_evt(uint16_t event, void *p_param)
     	 break;
     	}
     	
-        ESP_LOGI(BT_RC_TG_TAG, "AVRC set absolute volume: %d%%", (int)rc->set_abs_vol.volume * 100 / 0x7f);
+    //    ESP_LOGI(BT_RC_TG_TAG, "AVRC set absolute volume: %d%%", (int)rc->set_abs_vol.volume * 100 / 0x7f);
         volume_set_by_controller(rc->set_abs_vol.volume);
         volume_temp = (int)rc->set_abs_vol.volume;
         break;

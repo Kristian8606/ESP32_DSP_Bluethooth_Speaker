@@ -26,6 +26,7 @@
 #include "esp_avrc_api.h"
 #include <app_priv.h>
 
+
 uint8_t fs = 0;
 
 /* device name */

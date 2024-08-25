@@ -13,7 +13,3 @@
 #include "dsp.h"
 
 static void set_sample_rate (uint8_t samplerate);
-
-
-
-static void runFilters();
