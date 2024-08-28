@@ -1,4 +1,4 @@
-https://esp32.com/viewtopic.php?f=20&t=13532&start=10
+// https://esp32.com/viewtopic.php?f=20&t=13532&start=10
 
 short DspBuf[4096];
 audio_element_info_t Dsp_info = { 0 };
