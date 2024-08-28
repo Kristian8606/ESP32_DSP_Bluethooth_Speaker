@@ -1,3 +1,5 @@
+https://esp32.com/viewtopic.php?f=20&t=13532&start=10
+
 short DspBuf[4096];
 audio_element_info_t Dsp_info = { 0 };
 static esp_err_t Dsp_open(audio_element_handle_t self)
@@ -132,3 +134,5 @@ DspBuf[j] = (int16_t)FloatDspBufB[j]; // cast back
 int ret = audio_element_output(self, (char *)DspBuf, len);
 return (audio_element_err_t)ret;
 }
+
+
