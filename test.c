@@ -56,3 +56,79 @@ audio_element_cfg_t DspCfg;// = DEFAULT_AUDIO_ELEMENT_CONFIG();
 const char * boomer[]{ "mp3Decoder","DspProcessor", "i2s" };
 audio_pipeline_relink(pipeline, boomer, 3);
 audio_pipeline_set_listener(pipeline, evt);
+
+//////////////////////////////////////////////
+///////////////////////////////////////////////
+
+
+
+// should match bit rate in pipeline?
+int16_t DspBuf[4096];
+
+float coeffs_lpf[5];
+float w_lpf[5] = {0,0};
+#define NNN 4096
+float FloatDspBuf[NNN];
+float FloatDspBufB[NNN];
+const float *pFloatDspBuf = FloatDspBuf;
+
+
+// ********** PROCESS the buffer with DSP IIR !!
+
+static audio_element_err_t Dsp_process(audio_element_handle_t self, char *inbuf, int len)
+{
+
+
+audio_element_input(self, (char *)DspBuf, len);
+
+// ************* DSP Process DspBuf here ********************************
+
+
+
+// Calculate iir filter coefficients ( instead of preset )
+
+// generate low pass filter
+
+float freq = 4000;
+float qFactor = 200;
+
+esp_err_t rety = ESP_OK;
+
+rety = dsps_biquad_gen_lpf_f32(coeffs_lpf, freq, qFactor); // low pass
+// rety = dsps_biquad_gen_lpf_f32(coeffs_hpf, freq, qFactor); // high pass
+
+if (rety != ESP_OK) { ESP_LOGE(TAG, "Operation error dsps_biquad_gen_lpf_f32 = %i", rety);
+return rety; }
+
+
+// convert 16bit audio smaples to float ****************
+for ( int i = 0; i < len; i++ )
+{
+// do this properly with ESP-DSP maths ?
+FloatDspBuf = ((float)DspBuf) / (float)32768;
+}
+
+// DSP IIR biquad process
+esp_err_t rett = ESP_OK;
+rett = dsps_biquad_f32(pFloatDspBuf,FloatDspBufB,len,coeffs_lpf,w_lpf);
+
+if (rett != ESP_OK) { ESP_LOGE(TAG, "Operation error = %i", rett);
+return rett; }
+
+// convert float audio samples back into 16bit audio samples for pipeline
+for ( int j = 0; j < len; j++ )
+{
+// do this properly with ESP-DSP maths ?
+FloatDspBufB[j] = FloatDspBufB[j] * 32768 ;
+if( FloatDspBufB[j] > 32767 ) FloatDspBufB[j] = 32767;
+if( FloatDspBufB[j] < -32768 ) FloatDspBufB[j] = -32768;
+DspBuf[j] = (int16_t)FloatDspBufB[j]; // cast back
+}
+
+/// ************* END DSP Process ********************************
+
+// DspBuf samples back into pipeline
+
+int ret = audio_element_output(self, (char *)DspBuf, len);
+return (audio_element_err_t)ret;
+}
