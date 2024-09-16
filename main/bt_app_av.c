@@ -27,9 +27,9 @@
 #include "driver/i2s_std.h"
 #include "driver/gpio.h"
 #endif
+#include "bt_app_volume_control.h"
 
 #include "sys/lock.h"
-#include <app_priv.h>
 
 /* AVRCP used transaction labels */
 #define APP_RC_CT_TL_GET_CAPS            (0)
@@ -228,9 +228,9 @@ void bt_i2s_driver_install(void)
         },
     };
                     
-    ESP_ERROR_CHECK(i2s_new_channel(&Lchan_cfg, &Ltx_chan, NULL));
-    ESP_ERROR_CHECK(i2s_channel_init_std_mode(Ltx_chan, &Lstd_cfg));
-    ESP_ERROR_CHECK(i2s_channel_enable(Ltx_chan));
+ //   ESP_ERROR_CHECK(i2s_new_channel(&Lchan_cfg, &Ltx_chan, NULL));
+ //   ESP_ERROR_CHECK(i2s_channel_init_std_mode(Ltx_chan, &Lstd_cfg));
+ //   ESP_ERROR_CHECK(i2s_channel_enable(Ltx_chan));
     
     /* enable I2S */
     ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &tx_chan, NULL));
@@ -260,6 +260,7 @@ static void volume_set_by_controller(uint8_t volume)
     _lock_acquire(&s_volume_lock);
     s_volume = volume;  
     _lock_release(&s_volume_lock);
+    bt_app_set_volume(volume);
 }
 
 static void volume_set_by_local_host(uint8_t volume)
@@ -338,17 +339,17 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
         if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC) {
             int sample_rate = 16000;
             int ch_count = 2;
-           				 set_sample_rate(0);
+           				// set_sample_rate(0);
             char oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
             if (oct0 & (0x01 << 6)) {
                 sample_rate = 32000;
-                				set_sample_rate(1);
+                			//	set_sample_rate(1);
             } else if (oct0 & (0x01 << 5)) {
                 sample_rate = 44100;
-                				set_sample_rate(2);
+                			//	set_sample_rate(2);
             } else if (oct0 & (0x01 << 4)) {
                 sample_rate = 48000;
-                				set_sample_rate(3);
+                			//	set_sample_rate(3);
             }
 
             if (oct0 & (0x01 << 3)) {

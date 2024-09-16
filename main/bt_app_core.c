@@ -20,7 +20,8 @@
 #include "driver/i2s_std.h"
 #endif
 #include "freertos/ringbuf.h"
-#include <app_priv.h>
+#include "Biquad.h"
+#include "bt_app_volume_control.h"
 
 extern uint8_t s_volume;
 
@@ -102,7 +103,8 @@ static void bt_app_work_dispatched(bt_app_msg_t *msg)
 static void bt_app_task_handler(void *arg)
 {
     bt_app_msg_t msg;
-
+	 printf("bt app task from core %d!\n", xPortGetCoreID());
+	 
     for (;;) {
         /* receive message from work queue and handle it */
         if (pdTRUE == xQueueReceive(s_bt_app_task_queue, &msg, (TickType_t)portMAX_DELAY)) {
@@ -124,11 +126,30 @@ static void bt_app_task_handler(void *arg)
     }
 }
 
+uint8_t *volume_control_changeVolume(uint8_t *data, uint8_t *outputData, size_t size, uint8_t volume) {
+    const int numBytesShifted = 1;
+    int16_t pcmData;
+    bool isNegative;
+    memcpy(outputData, data, size);
+    size_t h = 0;
+    for (h = 0; h < size; h += numBytesShifted) {
+        pcmData = data[h];
+        isNegative = pcmData & 0x80;
+        if (isNegative) 
+            pcmData = (~pcmData) + 0x1;
+        pcmData = pcmData >> (8 - volume);
+        if (isNegative) 
+            pcmData = (~pcmData) + 0x1;
+        outputData[h] = pcmData;
+    }
+    return outputData;
+}
+
 static void bt_i2s_task_handler(void *arg)
 {
     uint8_t *data = NULL;
     size_t item_size = 0;
-   
+   printf("bt i2s task from core %d!\n", xPortGetCoreID());
     /**
      * The total length of DMA buffer of I2S is:
      * `dma_frame_num * dma_desc_num * i2s_channel_num * i2s_data_bit_width / 8`.
@@ -149,15 +170,18 @@ static void bt_i2s_task_handler(void *arg)
                     ringbuffer_mode = RINGBUFFER_MODE_PREFETCHING;
                     break;
                 }
+                 bt_app_adjust_volume(data, item_size);
+                /*
             int16_t * pcmdata = (int16_t *)data;
 			for (int i=0; i<item_size/2; i++) {
 				int32_t temp = (int32_t)(*pcmdata);
 				temp = temp * s_volume;
-				temp = temp/512;
+				temp = temp/1024;
 				//   *pcmdata = ((*pcmdata)*s_volume)/127;
 				*pcmdata = (int16_t)temp;
 				pcmdata++;
 			}
+			*/
 			
 		//	 int16_t buffer[item_size];
     	//	 uint8_t *data1 = (uint8_t *)buffer;
@@ -168,13 +192,9 @@ static void bt_i2s_task_handler(void *arg)
 		//	}
 			
 	     	
-		//	process_data_L(data1, item_size);
 			
-			process_data(data, item_size);
-			//process_data_R(data1, item_size);
-		 // process_data_L_test(data1, item_size);
-		//  process_data_R_L(data1, data, item_size);
-		  
+			process_data_mono(data, item_size);
+	
 
 			
             #ifdef CONFIG_EXAMPLE_A2DP_SINK_OUTPUT_INTERNAL_DAC
@@ -226,8 +246,8 @@ bool bt_app_work_dispatch(bt_app_cb_t p_cback, uint16_t event, void *p_params, i
 
 void bt_app_task_start_up(void)
 {
-    s_bt_app_task_queue = xQueueCreate(40, sizeof(bt_app_msg_t));
-    xTaskCreate(bt_app_task_handler, "BtAppTask", 3072, NULL, 10, &s_bt_app_task_handle);
+    s_bt_app_task_queue = xQueueCreate(128, sizeof(bt_app_msg_t));
+    xTaskCreatePinnedToCore(bt_app_task_handler, "BtAppTask", 3072, NULL, 10, &s_bt_app_task_handle,0);
 }
 
 void bt_app_task_shut_down(void)
@@ -254,7 +274,9 @@ void bt_i2s_task_start_up(void)
         ESP_LOGE(BT_APP_CORE_TAG, "%s, ringbuffer create failed", __func__);
         return;
     }
-    xTaskCreate(bt_i2s_task_handler, "BtI2STask", 4096, NULL, configMAX_PRIORITIES - 3, &s_bt_i2s_task_handle);
+    create_biquad();
+       xTaskCreatePinnedToCore(bt_i2s_task_handler, "BtI2STask", 4096, NULL, configMAX_PRIORITIES - 3, &s_bt_i2s_task_handle,1);
+       
 }
 
 void bt_i2s_task_shut_down(void)

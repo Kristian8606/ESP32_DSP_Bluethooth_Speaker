@@ -1,8 +1,3 @@
-//#include <app_priv.h>
-#include <inttypes.h>
-
-extern uint8_t fs;
-
 #include <math.h>
 #include <stdio.h>
 //uint8_t fs = 44100;
@@ -176,7 +171,7 @@ static struct iir_filt {
     char* type;
 };
 
-static void bq_print_info(struct iir_filt* bq){
+void bq_print_info(struct iir_filt* bq){
 	printf("A0: %13.16f\n",bq->a0);
 	printf("A1: %13.16f\n",bq->a1);
 	printf("A2: %13.16f\n",bq->a2);
@@ -185,11 +180,11 @@ static void bq_print_info(struct iir_filt* bq){
 	printf("TYPE: %s\n",bq->type);
 	printf("\n");
 }
-static int length = (sizeof(Hz) / sizeof(Hz[0]));
+int length = (sizeof(Hz) / sizeof(Hz[0]));
 
 struct iir_filt iir_coeff[11];
 
-static void calcBiquad(int type, double Fc, double peakGain,  double Q, struct iir_filt* config) {
+ static void calcBiquad(int type, double Fc, double peakGain,  double Q, struct iir_filt* config) {
 
   //   double a0 = 1.0;
    //  double a1 = 0.0, a2 = 0.0, b1 = 0.0, b2 = 0.0;
@@ -323,7 +318,6 @@ static void calcBiquad(int type, double Fc, double peakGain,  double Q, struct i
 	config->out_z1 = outSampleF;
 	return outSampleF;
  }
- /*
  static float process_iir_ch_1 (float inSampleF, struct iir_filt * config) {
          
 		 
@@ -353,7 +347,7 @@ static void calcBiquad(int type, double Fc, double peakGain,  double Q, struct i
 	config->out_z1_st = outSampleF;
 	return outSampleF;
 }
-*/
+
  static void create_biquad() {
       
      for (int i = 0; i < length; i++){
@@ -384,20 +378,19 @@ static void calcBiquad(int type, double Fc, double peakGain,  double Q, struct i
 		float lowsample = process_iir_mono(insample, &iir_coeff[0]);
 		lowsample = process_iir_mono(lowsample, &iir_coeff[1]);
 		
-	/*	lowsample = process_iir_mono(lowsample, &iir_coeff[4]);
+		lowsample = process_iir_mono(lowsample, &iir_coeff[4]);
 	    lowsample = process_iir_mono(lowsample, &iir_coeff[5]);
 	    lowsample = process_iir_mono(lowsample, &iir_coeff[6]);
-	 */	
+	 	
 	 
 
 		//process tweeter lowpass
 		float highsample = process_iir_mono(insample, &iir_coeff[2]);
 		highsample = process_iir_mono(highsample, &iir_coeff[3]);
-	/*	highsample = process_iir_mono(highsample, &iir_coeff[7]);
+		highsample = process_iir_mono(highsample, &iir_coeff[7]);
 	    highsample = process_iir_mono(highsample, &iir_coeff[8]);
         highsample = process_iir_mono(highsample, &iir_coeff[9]);
         highsample = process_iir_mono(highsample, &iir_coeff[10]);
-    */    
 		//restore two outputsamples lowsample & highsample to outputbuffer
 		*outsample = (int16_t) lowsample; // *0.9;
 		outsample++;
@@ -408,7 +401,7 @@ static void calcBiquad(int type, double Fc, double peakGain,  double Q, struct i
 	}
 
 }
-/*
+
 static void process_data_stereo(uint8_t * data, size_t item_size) {
 	
 	int16_t * samples = (int16_t *) data;
@@ -459,7 +452,9 @@ static void process_data_stereo(uint8_t * data, size_t item_size) {
 
 }
 
-*/
+static void set_sample_rate (uint8_t samplerate) {
+	 
+}
 
 /*
 static float process(float in) {
@@ -471,9 +466,3 @@ static float process(float in) {
 }
 
 */
-
-static void set_sample_rate (uint8_t samplerate) {
-	fs=samplerate;
-	 
-}
-

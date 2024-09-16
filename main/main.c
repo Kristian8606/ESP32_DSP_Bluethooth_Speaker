@@ -24,7 +24,6 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
-#include <app_priv.h>
 
 
 uint8_t fs = 0;
